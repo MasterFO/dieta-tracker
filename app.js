@@ -134,7 +134,7 @@ function getDayName(dateStr) {
 // FIREBASE CRUD
 // ============================================================
 async function loadWeek() {
-  if (!viewMonday) viewMonday = getMondayOfWeek(selectedDate);
+  viewMonday = getMondayOfWeek(selectedDate);
   const weekDates = getWeekDates(viewMonday);
   showLoading(true);
   try {
@@ -402,12 +402,14 @@ function initUI() {
 
   // Bottoni navigazione settimana
   document.getElementById('btnWeekPrev').addEventListener('click', () => {
-    const d = parseLocalDate(viewMonday);
+    const base = viewMonday || getMondayOfWeek(todayStr());
+    const d = parseLocalDate(base);
     d.setDate(d.getDate() - 7);
     loadViewWeek(dateToStr(d));
   });
   document.getElementById('btnWeekNext').addEventListener('click', () => {
-    const d = parseLocalDate(viewMonday);
+    const base = viewMonday || getMondayOfWeek(todayStr());
+    const d = parseLocalDate(base);
     d.setDate(d.getDate() + 7);
     loadViewWeek(dateToStr(d));
   });
