@@ -1,11 +1,11 @@
 // Firebase Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBab6ywdHWdBpxE15ZqYsqHqdWwPTpC-QE",
-  authDomain: "dieta-estate-2026.firebaseapp.com",
-  projectId: "dieta-estate-2026",
-  storageBucket: "dieta-estate-2026.firebasestorage.app",
-  messagingSenderId: "656853678719",
-  appId: "1:656853678719:web:57a8fb9b2eeeb748c0dd4a"
+  apiKey: "__FIREBASE_API_KEY__",
+  authDomain: "__FIREBASE_AUTH_DOMAIN__",
+  projectId: "__FIREBASE_PROJECT_ID__",
+  storageBucket: "__FIREBASE_STORAGE_BUCKET__",
+  messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
+  appId: "__FIREBASE_APP_ID__"
 };
 
 // Initialize Firebase (compat mode)

@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // AUTH
 // ============================================================
 
-const ALLOWED_EMAIL = 'guerzo.andrea@gmail.com';
+const ALLOWED_EMAIL = '__ALLOWED_EMAIL__';
 
 async function loginWithGoogle() {
   const btn = document.getElementById('btnLoginGoogle');
