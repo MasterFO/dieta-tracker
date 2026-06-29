@@ -33,12 +33,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 // AUTH
 // ============================================================
+
+const ALLOWED_EMAIL = 'guerzo.andrea@gmail.com';
+
 async function loginWithGoogle() {
   const btn = document.getElementById('btnLoginGoogle');
   btn.disabled = true;
   btn.textContent = 'Accesso in corso…';
   try {
-    await auth.signInWithPopup(googleProvider);
+    const result = await auth.signInWithPopup(googleProvider);
+    if (result.user.email !== ALLOWED_EMAIL) {
+      await auth.signOut();
+      document.getElementById('login-error').textContent = '⛔ Accesso non autorizzato per ' + result.user.email;
+      btn.disabled = false;
+      btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px;vertical-align:middle;margin-right:8px">Accedi con Google';
+    }
   } catch (e) {
     btn.disabled = false;
     btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px;vertical-align:middle;margin-right:8px">Accedi con Google';
@@ -69,26 +78,43 @@ function pastiRef() {
 // ============================================================
 // UTILITY
 // ============================================================
+
+// Crea una Date in ora locale (evita lo shift UTC)
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dateToStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function getMondayOfWeek(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const day = d.getDay(); // 0=sun
+  const d = parseLocalDate(dateStr);
+  const day = d.getDay(); // 0=dom, 1=lun, ...
   const diff = (day === 0 ? -6 : 1 - day);
-  const mon = new Date(d);
-  mon.setDate(d.getDate() + diff);
-  return mon.toISOString().slice(0, 10);
+  d.setDate(d.getDate() + diff);
+  return dateToStr(d);
 }
 
 function getWeekDates(mondayStr) {
   const dates = [];
-  const mon = new Date(mondayStr + 'T00:00:00');
+  const mon = parseLocalDate(mondayStr);
   for (let i = 0; i < 7; i++) {
     const d = new Date(mon);
     d.setDate(mon.getDate() + i);
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(dateToStr(d));
   }
   return dates;
 }
@@ -100,7 +126,7 @@ function formatDateIT(dateStr) {
 
 function getDayName(dateStr) {
   const names = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-  return names[new Date(dateStr + 'T00:00:00').getDay()];
+  return names[parseLocalDate(dateStr).getDay()];
 }
 
 // ============================================================
