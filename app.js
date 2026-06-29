@@ -7,6 +7,7 @@ let selectedDate = todayStr();
 let selectedGiornata = null;
 let weekData = {}; // { "YYYY-MM-DD": docData }
 let currentUser = null;
+let viewMonday = null; // lunedì della settimana visualizzata nella tab Settimana
 
 // ---- DOM ready ----
 document.addEventListener('DOMContentLoaded', () => {
@@ -133,8 +134,8 @@ function getDayName(dateStr) {
 // FIREBASE CRUD
 // ============================================================
 async function loadWeek() {
-  const monday = getMondayOfWeek(selectedDate);
-  const weekDates = getWeekDates(monday);
+  if (!viewMonday) viewMonday = getMondayOfWeek(selectedDate);
+  const weekDates = getWeekDates(viewMonday);
   showLoading(true);
   try {
     const snapshot = await pastiRef()
@@ -150,6 +151,27 @@ async function loadWeek() {
   showLoading(false);
   renderWeekView();
   renderFormForDate(selectedDate);
+  renderAlerts();
+}
+
+// Carica una settimana specifica per la tab Settimana (senza cambiare selectedDate)
+async function loadViewWeek(monday) {
+  viewMonday = monday;
+  const weekDates = getWeekDates(viewMonday);
+  showLoading(true);
+  try {
+    const snapshot = await pastiRef()
+      .where('data', 'in', weekDates)
+      .get();
+    weekData = {};
+    snapshot.forEach(doc => {
+      weekData[doc.data().data] = { id: doc.id, ...doc.data() };
+    });
+  } catch (e) {
+    showToast('Errore caricamento dati: ' + e.message, true);
+  }
+  showLoading(false);
+  renderWeekView();
   renderAlerts();
 }
 
@@ -378,6 +400,18 @@ function initUI() {
     });
   });
 
+  // Bottoni navigazione settimana
+  document.getElementById('btnWeekPrev').addEventListener('click', () => {
+    const d = parseLocalDate(viewMonday);
+    d.setDate(d.getDate() - 7);
+    loadViewWeek(dateToStr(d));
+  });
+  document.getElementById('btnWeekNext').addEventListener('click', () => {
+    const d = parseLocalDate(viewMonday);
+    d.setDate(d.getDate() + 7);
+    loadViewWeek(dateToStr(d));
+  });
+
   // Open all meal sections by default
   document.querySelectorAll('.meal-section').forEach(s => s.classList.add('open'));
 }
@@ -445,10 +479,22 @@ function renderFormForDate(dateStr) {
 // UI — WEEKLY VIEW
 // ============================================================
 function renderWeekView() {
-  const monday = getMondayOfWeek(selectedDate);
+  const monday = viewMonday || getMondayOfWeek(selectedDate);
   const weekDates = getWeekDates(monday);
   const container = document.getElementById('week-grid');
   container.innerHTML = '';
+
+  // Etichetta settimana
+  const labelEl = document.getElementById('week-label');
+  if (labelEl) {
+    const sunday = weekDates[6];
+    labelEl.textContent = `${formatDateIT(monday)} – ${formatDateIT(sunday)}`;
+  }
+
+  // Disabilita "Succ." se siamo già alla settimana corrente o futura
+  const todayMonday = getMondayOfWeek(todayStr());
+  const btnNext = document.getElementById('btnWeekNext');
+  if (btnNext) btnNext.disabled = monday >= todayMonday;
 
   const wd = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
