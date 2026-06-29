@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🥗 Dieta Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase SDK compat v10 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen" style="display:flex;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1b5e20,#2e7d32,#4caf50);padding:1.5rem;">
+  <div style="background:white;border-radius:16px;padding:2.5rem 2rem;max-width:380px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:3.5rem;margin-bottom:0.5rem">🥗</div>
+    <h1 style="font-size:1.5rem;font-weight:800;color:#1b5e20;margin-bottom:0.3rem">Dieta Tracker</h1>
+    <p style="color:#5a7a5a;font-size:0.9rem;margin-bottom:2rem">Dieta a lista di scambio — Estate 2026</p>
+    <button id="btnLoginGoogle" style="display:flex;align-items:center;justify-content:center;gap:0.7rem;width:100%;padding:0.9rem 1.5rem;border:2px solid #e0e0e0;border-radius:10px;background:white;font-size:1rem;font-weight:600;color:#333;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 6px rgba(0,0,0,0.08)">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:22px">
+      Accedi con Google
+    </button>
+    <p id="login-error" style="color:#c62828;font-size:0.82rem;margin-top:1rem;min-height:1.2em"></p>
+    <p style="color:#9e9e9e;font-size:0.78rem;margin-top:1.5rem">I tuoi dati sono privati e accessibili solo a te.</p>
+  </div>
+</div>
+
+<!-- ===== APP (visibile solo dopo login) ===== -->
+<div id="app-screen" style="display:none">
+
+<!-- ===== HEADER ===== -->
+<header>
+  <span class="logo">🥗</span>
+  <div>
+    <h1>Dieta Tracker</h1>
+    <p>Monitoraggio dieta a lista di scambio — Estate 2026</p>
+  </div>
+  <div id="loading-indicator" style="display:none;margin-left:auto;align-items:center;gap:0.4rem;font-size:0.82rem;color:rgba(255,255,255,0.85)">
+    <span class="spinner" style="border-top-color:white"></span> Caricamento…
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:0.7rem;flex-shrink:0">
+    <img id="user-avatar" src="" alt="avatar" style="width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.5);display:none">
+    <span id="user-name" style="font-size:0.8rem;opacity:0.9;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <button id="btnLogout" title="Esci" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:white;padding:0.35rem 0.7rem;font-size:0.8rem;cursor:pointer">Esci</button>
+  </div>
+</header>
+
+<!-- ===== NAV TABS ===== -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" data-tab="tab-inserisci">✏️ Inserisci</button>
+  <button class="nav-tab" data-tab="tab-settimana">📅 Settimana</button>
+  <button class="nav-tab" data-tab="tab-avvisi">
+    🔔 Avvisi <span id="alerts-badge" class="badge badge-red" style="display:none">0</span>
+  </button>
+  <button class="nav-tab" data-tab="tab-dieta">📋 La mia dieta</button>
+</nav>
+
+<main>
+
+<!-- ========================================
+     TAB 1 — INSERISCI PASTO
+     ======================================== -->
+<section id="tab-inserisci" class="tab-panel active">
+
+  <!-- Date + giornata tipo selector -->
+  <div class="card">
+    <div class="card-title">📅 Seleziona giorno</div>
+    <div class="day-selector">
+      <label for="datePicker">Data:</label>
+      <input type="date" id="datePicker" />
+      <strong id="form-date-label" style="color:var(--primary-dark)"></strong>
+    </div>
+
+    <div class="card-title" style="margin-bottom:0.6rem">🗂️ Giornata tipo</div>
+    <div class="giornata-selector">
+      <button class="giornata-btn" data-tipo="1">
+        <span class="g-num">Giorno 1</span>
+        <span class="g-desc">🍝 Primo a pranzo<br>(pasta, riso, cous cous…)</span>
+      </button>
+      <button class="giornata-btn" data-tipo="2">
+        <span class="g-num">Giorno 2</span>
+        <span class="g-desc">🍗 Secondo a pranzo<br>(carne, pesce, uova…)</span>
+      </button>
+      <button class="giornata-btn" data-tipo="3">
+        <span class="g-num">Giorno 3</span>
+        <span class="g-desc">🍕 Cena libera / Pizza<br>(max 1 volta/settimana)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Meals -->
+  <div class="card">
+    <div class="card-title">🍽️ Pasti del giorno</div>
+
+    <!-- COLAZIONE -->
+    <div class="meal-section open" id="section-colazione">
+      <div class="meal-header">
+        <span class="meal-icon">☀️</span>
+        <span class="meal-name">Colazione</span>
+        <span class="meal-toggle">▼</span>
+      </div>
+      <div class="meal-body">
+        <textarea id="txt-colazione" placeholder="Es: Tè + 3 fette biscottate con marmellata…"></textarea>
+        <div class="cat-label">Categorie consumate</div>
+        <div class="categories-grid">
+          <label class="cat-chip"><input type="checkbox" name="frutta" /><span>🍎 Frutta</span></label>
+          <label class="cat-chip"><input type="checkbox" name="dolci" /><span>🍰 Dolci</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRANZO -->
+    <div class="meal-section open" id="section-pranzo">
+      <div class="meal-header">
+        <span class="meal-icon">🍽️</span>
+        <span class="meal-name">Pranzo</span>
+        <span class="meal-toggle">▼</span>
+      </div>
+      <div class="meal-body">
+        <textarea id="txt-pranzo" placeholder="Es: Pasta al pomodoro 130g + parmigiano + insalata + mela…"></textarea>
+        <div class="cat-label">Categorie consumate</div>
+        <div class="categories-grid">
+          <label class="cat-chip"><input type="checkbox" name="pesce" /><span>🐟 Pesce</span></label>
+          <label class="cat-chip"><input type="checkbox" name="carnebianca" /><span>🍗 Carne bianca</span></label>
+          <label class="cat-chip"><input type="checkbox" name="carnerossa" /><span>🥩 Carne rossa</span></label>
+          <label class="cat-chip"><input type="checkbox" name="legumi" /><span>🫘 Legumi</span></label>
+          <label class="cat-chip"><input type="checkbox" name="uova" /><span>🥚 Uova</span></label>
+          <label class="cat-chip"><input type="checkbox" name="formaggi" /><span>🧀 Formaggi</span></label>
+          <label class="cat-chip"><input type="checkbox" name="salumi" /><span>🥓 Salumi</span></label>
+          <label class="cat-chip"><input type="checkbox" name="verdura" /><span>🥦 Verdura</span></label>
+          <label class="cat-chip"><input type="checkbox" name="frutta" /><span>🍎 Frutta</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- MERENDA -->
+    <div class="meal-section open" id="section-merenda">
+      <div class="meal-header">
+        <span class="meal-icon">🍪</span>
+        <span class="meal-name">Merenda</span>
+        <span class="meal-toggle">▼</span>
+      </div>
+      <div class="meal-body">
+        <textarea id="txt-merenda" placeholder="Es: Crackers 40g / pane 60g / frutta 150g…"></textarea>
+        <div class="cat-label">Categorie consumate</div>
+        <div class="categories-grid">
+          <label class="cat-chip"><input type="checkbox" name="frutta" /><span>🍎 Frutta</span></label>
+          <label class="cat-chip"><input type="checkbox" name="dolci" /><span>🍰 Dolci</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENA -->
+    <div class="meal-section open" id="section-cena">
+      <div class="meal-header">
+        <span class="meal-icon">🌙</span>
+        <span class="meal-name">Cena</span>
+        <span class="meal-toggle">▼</span>
+      </div>
+      <div class="meal-body">
+        <textarea id="txt-cena" placeholder="Es: Pollo 150g + verdure + pane integrale 120g + yogurt…"></textarea>
+        <div class="cat-label">Categorie consumate</div>
+        <div class="categories-grid">
+          <label class="cat-chip"><input type="checkbox" name="pesce" /><span>🐟 Pesce</span></label>
+          <label class="cat-chip"><input type="checkbox" name="carnebianca" /><span>🍗 Carne bianca</span></label>
+          <label class="cat-chip"><input type="checkbox" name="carnerossa" /><span>🥩 Carne rossa</span></label>
+          <label class="cat-chip"><input type="checkbox" name="legumi" /><span>🫘 Legumi</span></label>
+          <label class="cat-chip"><input type="checkbox" name="uova" /><span>🥚 Uova</span></label>
+          <label class="cat-chip"><input type="checkbox" name="formaggi" /><span>🧀 Formaggi</span></label>
+          <label class="cat-chip"><input type="checkbox" name="salumi" /><span>🥓 Salumi</span></label>
+          <label class="cat-chip"><input type="checkbox" name="verdura" /><span>🥦 Verdura</span></label>
+          <label class="cat-chip"><input type="checkbox" name="frutta" /><span>🍎 Frutta</span></label>
+          <label class="cat-chip"><input type="checkbox" name="pizza" /><span>🍕 Pizza/Libero</span></label>
+          <label class="cat-chip"><input type="checkbox" name="birra" /><span>🍺 Birra</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTE -->
+    <div style="margin-top:0.8rem">
+      <label style="font-size:0.88rem;font-weight:600;color:var(--text-muted)">📝 Note</label>
+      <textarea id="txt-note" placeholder="Note libere, come ti sei sentita, variazioni…"
+        style="width:100%;min-height:60px;margin-top:0.4rem;padding:0.6rem 0.8rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:0.88rem;resize:vertical;background:var(--bg);outline:none;"></textarea>
+    </div>
+
+    <!-- Save bar -->
+    <div class="save-bar">
+      <button class="btn btn-primary" id="btnSalva">💾 Salva pasto</button>
+      <button class="btn btn-danger" id="btnElimina" style="display:none">🗑️ Elimina</button>
+      <span class="save-status" id="save-status"></span>
+    </div>
+  </div>
+
+</section>
+
+<!-- ========================================
+     TAB 2 — SETTIMANA
+     ======================================== -->
+<section id="tab-settimana" class="tab-panel">
+  <div class="section-header">
+    <div class="section-title">📅 Settimana</div>
+  </div>
+
+  <div class="card">
+    <!-- Navigazione settimane -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:0.5rem">
+      <button id="btnWeekPrev" class="btn btn-secondary" style="padding:0.5rem 1rem;font-size:1rem">‹ Prec.</button>
+      <span id="week-label" style="font-weight:700;color:var(--primary-dark);font-size:0.95rem;text-align:center"></span>
+      <button id="btnWeekNext" class="btn btn-secondary" style="padding:0.5rem 1rem;font-size:1rem">Succ. ›</button>
+    </div>
+    <div class="week-grid" id="week-grid"></div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem">
+      Clicca su un giorno per modificare i dati · <span style="background:var(--green-light);padding:0.1rem 0.4rem;border-radius:4px;font-weight:600">G1/G2/G3</span> = giornata tipo · 🟢 = dati inseriti
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Conteggi settimanali</div>
+    <div class="stats-grid" id="week-stats"></div>
+  </div>
+</section>
+
+<!-- ========================================
+     TAB 3 — AVVISI
+     ======================================== -->
+<section id="tab-avvisi" class="tab-panel">
+  <div class="section-header">
+    <div class="section-title">🔔 Avvisi e consigli</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:0.3rem">Legenda</div>
+    <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.83rem">
+      <span class="alert rosso" style="padding:0.3rem 0.7rem;display:inline-flex;gap:0.4rem;align-items:center">🔴 Limite superato</span>
+      <span class="alert giallo" style="padding:0.3rem 0.7rem;display:inline-flex;gap:0.4rem;align-items:center">🟡 Obiettivo a rischio</span>
+      <span class="alert verde" style="padding:0.3rem 0.7rem;display:inline-flex;gap:0.4rem;align-items:center">🟢 Obiettivo raggiunto</span>
+    </div>
+    <div class="alerts-container" id="alerts-container">
+      <p style="color:var(--text-muted);font-size:0.9rem">Caricamento avvisi…</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Regole settimanali</div>
+    <ul class="rules-list">
+      <li><span class="rule-icon">🐟</span><span><strong>Pesce</strong>: almeno 2-3 volte a settimana</span></li>
+      <li><span class="rule-icon">🍗</span><span><strong>Carne</strong>: massimo 2-3 volte (preferire bianca)</span></li>
+      <li><span class="rule-icon">🥩</span><span><strong>Carne rossa</strong>: massimo 1 volta a settimana</span></li>
+      <li><span class="rule-icon">🫘</span><span><strong>Legumi</strong>: almeno 2-3 volte a settimana</span></li>
+      <li><span class="rule-icon">🥚</span><span><strong>Uova</strong>: 2-4 a settimana</span></li>
+      <li><span class="rule-icon">🧀</span><span><strong>Formaggi</strong>: massimo 1-2 volte a settimana</span></li>
+      <li><span class="rule-icon">🥓</span><span><strong>Salumi</strong>: massimo 1-2 volte a settimana</span></li>
+      <li><span class="rule-icon">🍕</span><span><strong>Pizza/pasto libero</strong>: massimo 1 volta a settimana (solo Giorno 3)</span></li>
+      <li><span class="rule-icon">🍰</span><span><strong>Dolci</strong>: massimo 1 a settimana</span></li>
+      <li><span class="rule-icon">🍺</span><span><strong>Birra</strong>: massimo 2 a settimana</span></li>
+      <li><span class="rule-icon">🥦</span><span><strong>Verdura</strong>: almeno 2-3 porzioni al giorno</span></li>
+      <li><span class="rule-icon">🍎</span><span><strong>Frutta</strong>: 2 porzioni al giorno</span></li>
+      <li><span class="rule-icon">💧</span><span><strong>Acqua</strong>: almeno 1,5 litri al giorno</span></li>
+      <li><span class="rule-icon">🚫</span><span><strong>Bevande zuccherate</strong>: da evitare</span></li>
+      <li><span class="rule-icon">⚖️</span><span><strong>Pesi</strong>: riferiti a crudo e al netto degli scarti</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========================================
+     TAB 4 — LA MIA DIETA (riferimento)
+     ======================================== -->
+<section id="tab-dieta" class="tab-panel">
+  <div class="section-header">
+    <div class="section-title">📋 Schema dieta di riferimento</div>
+  </div>
+
+  <div class="card">
+    <div class="ref-day-tabs">
+      <button class="ref-day-tab active" data-ref="ref-g1">🍝 Giorno 1</button>
+      <button class="ref-day-tab" data-ref="ref-g2">🍗 Giorno 2</button>
+      <button class="ref-day-tab" data-ref="ref-g3">🍕 Giorno 3</button>
+    </div>
+
+    <!-- GIORNO 1 -->
+    <div id="ref-g1" class="ref-panel active">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;padding:0.6rem;background:var(--accent-light);border-radius:var(--radius-sm)">
+        Usare quando si mangia un <strong>PRIMO</strong> a pranzo (pasta, riso, cous cous, gnocchi…)
+      </p>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">☀️ Colazione</div>
+        <ul>
+          <li>Tè / tisana <span class="exchange-tag">250g</span></li>
+          <li>A SCELTA: Biscotti Oro Saiwa <span class="exchange-tag">45g</span> · Biscotti integrali <span class="exchange-tag">45g</span> · 3 Fette biscottate <span class="exchange-tag">60g</span> con marmellata</li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🍽️ Pranzo</div>
+        <ul>
+          <li><strong>Primo:</strong> Pasta semola <span class="exchange-tag">130g</span> · Riso <span class="exchange-tag">140g</span> · Cous cous <span class="exchange-tag">120g</span> · Gnocchi <span class="exchange-tag">190g</span> · Pasta uovo <span class="exchange-tag">130g</span> · Tortelli <span class="exchange-tag">180g</span></li>
+          <li><strong>Condimento:</strong> Olio <span class="exchange-tag">15g</span> · Burro <span class="exchange-tag">20g</span> · Ragù <span class="exchange-tag">40g</span></li>
+          <li>Parmigiano <span class="exchange-tag">30g</span></li>
+          <li><strong>Secondo (opz.):</strong> Salmone/Sgombro/Tonno <span class="exchange-tag">60g</span> · Legumi <span class="exchange-tag">140g</span> · Formaggio semi-stagionato <span class="exchange-tag">30g</span> · Philadelphia light <span class="exchange-tag">60g</span></li>
+          <li>Pane bianco <span class="exchange-tag">160g</span></li>
+          <li>Verdure <span class="exchange-tag">150g</span> + Olio <span class="exchange-tag">5g</span></li>
+          <li><strong>Frutta (a scelta):</strong> Albicocche 200g · Ananas 150g · Banane 100g · Ciliegie 150g · Cocomero 400g · Mele 150g · Melone 200g · Pesche 200g · Prugne 150g · Uva 100g</li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🌙 Cena</div>
+        <ul>
+          <li><strong>Proteina:</strong> Pollo petto <span class="exchange-tag">150g</span> · Tacchino <span class="exchange-tag">110g</span> · Pollo coscia <span class="exchange-tag">110g</span> · Maiale magro <span class="exchange-tag">100g</span> · Manzo magro <span class="exchange-tag">110g</span> · Pesce gratinato <span class="exchange-tag">140g</span> · Salmone sc. <span class="exchange-tag">80g</span> · Sgombro <span class="exchange-tag">70g</span> · Tonno <span class="exchange-tag">80g</span> · Uova <span class="exchange-tag">120g</span> · Salumi magri <span class="exchange-tag">100g</span> · Crescenza light <span class="exchange-tag">90g</span> · Formaggi semi-stag. <span class="exchange-tag">40g</span> · Mozzarella light <span class="exchange-tag">90g</span> · Parmigiano <span class="exchange-tag">40g</span> · Philadelphia light <span class="exchange-tag">70g</span></li>
+          <li><strong>Pane:</strong> Bianco <span class="exchange-tag">100g</span> · Integrale <span class="exchange-tag">120g</span> · Crackers <span class="exchange-tag">65g</span></li>
+          <li>Verdure <span class="exchange-tag">150g</span> + Olio <span class="exchange-tag">15g</span></li>
+          <li>Frutta <span class="exchange-tag">150g</span> <em>oppure</em> Yogurt magro <span class="exchange-tag">125g</span> <em>oppure</em> Ghiacciolo <span class="exchange-tag">70g</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- GIORNO 2 -->
+    <div id="ref-g2" class="ref-panel">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;padding:0.6rem;background:var(--accent-light);border-radius:var(--radius-sm)">
+        Usare quando si mangia un <strong>SECONDO</strong> a pranzo (carne, pesce, uova…)
+      </p>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">☀️ Colazione</div>
+        <ul>
+          <li>Come Giorno 1</li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🍽️ Pranzo</div>
+        <ul>
+          <li><strong>Secondo:</strong> Pollo petto <span class="exchange-tag">200g</span> · Tacchino <span class="exchange-tag">150g</span> · Pollo coscia <span class="exchange-tag">150g</span> · Bocconcini pollo <span class="exchange-tag">110g</span> · Pollo arrosto <span class="exchange-tag">170g</span> · Scaloppa tacchino <span class="exchange-tag">160g</span> · Maiale magro <span class="exchange-tag">140g</span> · Manzo magro <span class="exchange-tag">150g</span> · Pesce gratinato <span class="exchange-tag">180g</span> · Salmone <span class="exchange-tag">100g</span> · Sgombro <span class="exchange-tag">100g</span> · Tonno 2 scatole <span class="exchange-tag">100g</span> · Frittata <span class="exchange-tag">130g</span></li>
+          <li><strong>Pane:</strong> Bianco <span class="exchange-tag">100g</span> · Integrale <span class="exchange-tag">120g</span> · Crackers <span class="exchange-tag">65g</span> · Patate <span class="exchange-tag">300g</span></li>
+          <li>Verdure <span class="exchange-tag">150g</span> + Olio <span class="exchange-tag">20g</span></li>
+          <li>Frutta <span class="exchange-tag">150g</span></li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🍪 Merenda</div>
+        <ul>
+          <li>Crackers <span class="exchange-tag">40g</span> · Pane bianco <span class="exchange-tag">60g</span> · Schiacciatina <span class="exchange-tag">40g</span></li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🌙 Cena</div>
+        <ul>
+          <li>Uguale al Giorno 1 (stesse quantità)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- GIORNO 3 -->
+    <div id="ref-g3" class="ref-panel">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;padding:0.6rem;background:var(--accent-light);border-radius:var(--radius-sm)">
+        Usare quando a cena c'è <strong>PASTO LIBERO o PIZZA</strong> (max 1 volta a settimana)
+      </p>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">☀️ Colazione</div>
+        <ul>
+          <li>Come Giorno 1</li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🍽️ Pranzo (ridotto)</div>
+        <ul>
+          <li><strong>Secondo:</strong> Pollo <span class="exchange-tag">150g</span> · Tacchino <span class="exchange-tag">110g</span> · Pollo coscia <span class="exchange-tag">110g</span> · Maiale <span class="exchange-tag">100g</span> · Manzo <span class="exchange-tag">110g</span> · Pesce <span class="exchange-tag">150g</span> · Salmone <span class="exchange-tag">80g</span> · Sgombro <span class="exchange-tag">70g</span> · Tonno <span class="exchange-tag">80g</span></li>
+          <li><strong>Pane:</strong> Bianco <span class="exchange-tag">80g</span> · Integrale <span class="exchange-tag">90g</span> · Crackers <span class="exchange-tag">50g</span></li>
+          <li>Verdure <span class="exchange-tag">150g</span> + Olio <span class="exchange-tag">10g</span></li>
+          <li>Frutta <span class="exchange-tag">150g</span></li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🍪 Merenda</div>
+        <ul>
+          <li>Frutta <span class="exchange-tag">150g</span></li>
+        </ul>
+      </div>
+
+      <div class="meal-ref">
+        <div class="meal-ref-title">🌙 Cena libera</div>
+        <ul>
+          <li>Pizza margherita <span class="exchange-tag">330g</span></li>
+          <li><em>oppure</em> Pasto libero</li>
+          <li>+ Birra <span class="exchange-tag">500g</span> <em>oppure</em> Estathè <span class="exchange-tag">400g</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+</div><!-- fine #app-screen -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Firebase config + app logic -->
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
