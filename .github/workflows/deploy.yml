@@ -25,13 +25,20 @@ jobs:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           ALLOWED_EMAIL: ${{ secrets.ALLOWED_EMAIL }}
         run: |
-          sed -i "s|__FIREBASE_API_KEY__|$FIREBASE_API_KEY|g" firebase-config.js
-          sed -i "s|__FIREBASE_AUTH_DOMAIN__|$FIREBASE_AUTH_DOMAIN|g" firebase-config.js
-          sed -i "s|__FIREBASE_PROJECT_ID__|$FIREBASE_PROJECT_ID|g" firebase-config.js
-          sed -i "s|__FIREBASE_STORAGE_BUCKET__|$FIREBASE_STORAGE_BUCKET|g" firebase-config.js
-          sed -i "s|__FIREBASE_MESSAGING_SENDER_ID__|$FIREBASE_MESSAGING_SENDER_ID|g" firebase-config.js
-          sed -i "s|__FIREBASE_APP_ID__|$FIREBASE_APP_ID|g" firebase-config.js
-          sed -i "s|__ALLOWED_EMAIL__|$ALLOWED_EMAIL|g" app.js
+          # Normalizza line endings Windows -> Unix
+          sed -i 's/\r//' firebase-config.js
+          sed -i 's/\r//' app.js
+          # Sostituisce i placeholder con i valori reali
+          sed -i "s|__FIREBASE_API_KEY__|${FIREBASE_API_KEY}|g" firebase-config.js
+          sed -i "s|__FIREBASE_AUTH_DOMAIN__|${FIREBASE_AUTH_DOMAIN}|g" firebase-config.js
+          sed -i "s|__FIREBASE_PROJECT_ID__|${FIREBASE_PROJECT_ID}|g" firebase-config.js
+          sed -i "s|__FIREBASE_STORAGE_BUCKET__|${FIREBASE_STORAGE_BUCKET}|g" firebase-config.js
+          sed -i "s|__FIREBASE_MESSAGING_SENDER_ID__|${FIREBASE_MESSAGING_SENDER_ID}|g" firebase-config.js
+          sed -i "s|__FIREBASE_APP_ID__|${FIREBASE_APP_ID}|g" firebase-config.js
+          sed -i "s|__ALLOWED_EMAIL__|${ALLOWED_EMAIL}|g" app.js
+          # Verifica sostituzione (visibile nei log della Action)
+          echo "=== firebase-config.js ==="
+          cat firebase-config.js
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
